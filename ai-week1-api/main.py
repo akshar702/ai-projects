@@ -6,14 +6,12 @@ from dotenv import load_dotenv
 import os
 from fastapi.responses import StreamingResponse
 from typing import List
+
 load_dotenv()
 
 app = FastAPI()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# ─────────────────────────────────────────
-# CORS — so Angular can call this API
-# ─────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,8 +20,12 @@ app.add_middleware(
 )
 
 # ─────────────────────────────────────────
-# MODELS (Pydantic = Zod in Python)
+# MODELS
 # ─────────────────────────────────────────
+class Message(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
     message: str
     temperature: float = 0.7
@@ -31,6 +33,10 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     tokens_used: int
+
+class ChatHistoryRequest(BaseModel):
+    messages: List[Message]
+    temperature: float = 0.7
 
 # ─────────────────────────────────────────
 # ROUTES
@@ -49,68 +55,53 @@ def chat(request: ChatRequest):
         ],
         temperature=request.temperature
     )
-    
     return ChatResponse(
         reply=response.choices[0].message.content,
         tokens_used=response.usage.total_tokens
     )
 
 # ─────────────────────────────────────────
-# STREAMING ENDPOINT
+# STREAMING WITH HISTORY
 # ─────────────────────────────────────────
 @app.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatHistoryRequest):
     
     def generate():
+        messages = [
+            {"role": msg.role, "content": msg.content}
+            for msg in request.messages
+        ]
         stream = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": request.message}
-            ],
+            messages=messages,
             temperature=request.temperature,
             stream=True
         )
-        
         for chunk in stream:
             token = chunk.choices[0].delta.content
             if token:
-                # SSE format — Angular knows this format!
                 yield f"data: {token}\n\n"
-        
-        # Signal stream is done
         yield "data: [DONE]\n\n"
     
     return StreamingResponse(
         generate(),
-        media_type="text/event-stream"  # ← this is SSE
+        media_type="text/event-stream"
     )
 
 # ─────────────────────────────────────────
-# CHAT WITH HISTORY
+# CHAT WITH HISTORY (no streaming)
 # ─────────────────────────────────────────
-class Message(BaseModel):
-    role: str
-    content: str
-
-class ChatHistoryRequest(BaseModel):
-    messages: List[Message]
-    temperature: float = 0.7
-
 @app.post("/chat/history")
 async def chat_with_history(request: ChatHistoryRequest):
-    # Convert Pydantic models to dicts for Groq
     messages = [
         {"role": msg.role, "content": msg.content}
         for msg in request.messages
     ]
-    
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,
         temperature=request.temperature
     )
-    
     return ChatResponse(
         reply=response.choices[0].message.content,
         tokens_used=response.usage.total_tokens

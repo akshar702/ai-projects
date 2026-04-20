@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 16px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            color: #888;
+            letter-spacing: 2px;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 10px 0;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 80%;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+
+        .user {
+            background: #1e3a5f;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .assistant {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .assistant.streaming {
+            border-color: #4a9eff;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus { border-color: #4a9eff; }
+
+        button {
+            padding: 14px 24px;
+            border-radius: 12px;
+            border: none;
+            background: #4a9eff;
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #3a8eef; }
+        button:disabled { background: #333; cursor: not-allowed; }
+
+        .typing { color: #4a9eff; font-size: 13px; height: 20px; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>AI CHAT</h1>
+        <div class="messages" id="messages"></div>
+        <div class="typing" id="typing"></div>
+        <div class="input-row">
+            <input 
+                type="text" 
+                id="input" 
+                placeholder="Ask anything..." 
+                onkeydown="if(event.key==='Enter') sendMessage()"
+            />
+            <button id="btn" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const messages = [
+            { role: "system", content: "You are a helpful assistant." }
+        ];
+
+        function addMessage(role, content) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            div.textContent = content;
+            document.getElementById('messages').appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+            return div;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('input');
+            const btn = document.getElementById('btn');
+            const typing = document.getElementById('typing');
+            const text = input.value.trim();
+            
+            if (!text) return;
+
+            // Add user message
+            addMessage('user', text);
+            messages.push({ role: 'user', content: text });
+            input.value = '';
+            btn.disabled = true;
+            typing.textContent = 'AI is thinking...';
+
+            // Create assistant message bubble
+            const aiDiv = addMessage('assistant', '');
+            aiDiv.classList.add('streaming');
+
+            try {
+                const response = await fetch('http://localhost:8000/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+    messages: messages,  // full history array
+    temperature: 0.7 
+})                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullReply = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const token = line.replace('data: ', '');
+                            if (token === '[DONE]') break;
+                            fullReply += token;
+                            aiDiv.textContent = fullReply;
+                            aiDiv.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    }
+                }
+
+                aiDiv.classList.remove('streaming');
+                messages.push({ role: 'assistant', content: fullReply });
+
+            } catch (err) {
+                aiDiv.textContent = 'Error: Could not connect to API';
+                aiDiv.classList.remove('streaming');
+            }
+
+            btn.disabled = false;
+            typing.textContent = '';
+            input.focus();
+        }
+    </script>
+</body>
+</html>
