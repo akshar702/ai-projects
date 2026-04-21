@@ -7,8 +7,21 @@ import os
 import hashlib
 import chromadb
 from vectorstore import load_and_chunk, store_in_chromadb
+import re
 
 load_dotenv()
+
+
+def is_conversational(question: str) -> bool:
+    conversational = [
+        'hi', 'hello', 'hey', 'how are you', 'good morning', 
+        'good evening', 'good night', 'thanks', 'thank you',
+        'bye', 'goodbye', 'who are you', 'what are you',
+        'nice to meet', 'help me', 'what can you do'
+    ]
+    q = question.lower().strip()
+    return any(q == c or q.startswith(c) for c in conversational)
+
 
 # ─────────────────────────────────────────
 # SETUP
@@ -67,16 +80,19 @@ def upload_pdf(pdf_path: str, force_reload=False) -> str:
 # PROMPT TEMPLATE
 # ─────────────────────────────────────────
 prompt = ChatPromptTemplate.from_template("""
-You are a helpful assistant that answers questions based on the provided context.
+You are a helpful assistant called Folio. You help users understand their documents.
+
+Context from the document:
+{context}
 
 Rules:
+- If the question is a greeting or general conversation, respond naturally and friendly
+- If the question is about the document, answer from the context and mention page numbers
+- If the answer is not in the context, say so honestly but stay helpful
 - Primarily answer from the context below
 - Mention page numbers when you find relevant information
 - If the exact answer is not in context but related information exists, use that to give best possible answer
 - Only say "I couldn't find this" if context has absolutely nothing related
-
-Context:
-{context}
 
 Question: {question}
 
@@ -87,7 +103,6 @@ Answer:
 # ASK — takes question + session_id
 # ─────────────────────────────────────────
 def ask(question: str, session_id: str, top_k: int = 8):
-    print(f"Searching collection: {session_id}")
     vectorstore = Chroma(
         persist_directory="./chroma_db",
         embedding_function=embedding_function,
@@ -95,11 +110,6 @@ def ask(question: str, session_id: str, top_k: int = 8):
     )
     
     results = vectorstore.similarity_search(question, k=top_k)
-    print(f"Found {len(results)} results")
-    
-    # Add this:
-    for i, doc in enumerate(results):
-        print(f"Chunk {i+1}: {doc.page_content[:100]}")
     
     context = ""
     pages = []
@@ -108,20 +118,27 @@ def ask(question: str, session_id: str, top_k: int = 8):
         context += f"\n[Page {page}]\n{doc.page_content}\n"
         pages.append(f"Page {page}")
 
-    # Add this:
-    print(f"Context length: {len(context)}")
-    
     chain = prompt | llm
     response = chain.invoke({
         "context": context,
         "question": question
     })
-    
-    print(f"Answer: {response.content[:100]}")
-    
+
+    answer = response.content
+
+    # Only return sources if answer actually uses document context
+    # Check if answer contains document-specific content
+    is_document_answer = any(
+        keyword in answer.lower() 
+        for keyword in ['page', 'document', 'context', 'according', 'mentioned', 'states', 'provides']
+    )
+
+    relevant_sources = list(set(pages)) if is_document_answer else []
+    relevant_sources = [] if is_conversational(question) else list(set(pages))
+
     return {
-        "answer": response.content,
-        "sources": list(set(pages))
+        "answer": answer,
+        "sources": relevant_sources
     }
 
 # ─────────────────────────────────────────

@@ -73,12 +73,17 @@ async def ask_stream(request: AskRequest):
         answer = result["answer"]
         sources = result["sources"]
 
-        for char in answer:
-            yield f"data: {char}\n\n"
+        # Stream word by word instead of char by char
+        words = answer.split(' ')
+        for i, word in enumerate(words):
+            # Add space back except for last word
+            token = word + (' ' if i < len(words) - 1 else '')
+            yield f"data: {token}\n\n"
 
-        # Send sources as special event
         import json
-        yield f"data: [SOURCES]{json.dumps(sources)}\n\n"
+        if sources:
+            yield f"data: [SOURCES]{json.dumps(sources)}\n\n"
+        
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(
