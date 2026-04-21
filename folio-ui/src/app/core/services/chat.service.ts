@@ -1,10 +1,11 @@
 import { Injectable, signal } from '@angular/core'
 import { Message } from '../models/message.model'
+import { environment } from '../../../environments/environment.development'
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
-  private apiUrl = 'https://folio-api-f2gp.onrender.com'
 
+  private apiUrl = environment.apiUrl
   // State
   messages = signal<Message[]>([])
   isStreaming = signal<boolean>(false)
