@@ -3,7 +3,7 @@ import { Message } from '../models/message.model'
 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
-  private apiUrl = 'http://localhost:8000'
+  private apiUrl = 'https://folio-api-f2gp.onrender.com'
 
   // State
   messages = signal<Message[]>([])

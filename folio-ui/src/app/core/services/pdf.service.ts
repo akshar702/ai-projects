@@ -6,7 +6,7 @@ import { PdfDocument } from '../models/pdf.model'
 
 @Injectable({ providedIn: 'root' })
 export class PdfService {
-  private apiUrl = 'http://localhost:8000'
+  private apiUrl = 'https://folio-api-f2gp.onrender.com'
 
   // State
   documents = signal<PdfDocument[]>([])
