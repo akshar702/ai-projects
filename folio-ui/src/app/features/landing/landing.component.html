@@ -1,0 +1,194 @@
+<div class="min-h-screen flex flex-col" style="background: var(--bg-primary); color: var(--text-primary);">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-4 md:px-6 py-4" [attr.style]="headerBorderStyle">
+      <!-- Replace static logo with clickable -->
+<div 
+class="flex items-center gap-2 cursor-pointer"
+(click)="router.navigate(['/'])">
+<div class="w-6 h-6 rounded-md flex items-center justify-center" style="background: var(--accent);">
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M2 3h8M2 6h6M2 9h4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+</div>
+<span class="text-sm font-medium tracking-tight">Folio</span>
+</div>
+  
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            *ngFor="let theme of themes"
+            (click)="setAccent(theme)"
+            style="width: 14px; height: 14px; border-radius: 50%; cursor: pointer; transition: transform 0.15s; flex-shrink: 0;"
+            [style.background]="themeColors[theme]"
+            [style.outline]="themeService.accent() === theme ? '2px solid ' + themeColors[theme] : 'none'"
+            [style.outline-offset]="'2px'">
+          </button>
+        </div>
+  
+        <button
+          (click)="toggleMode()"
+          class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+          style="background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.08);">
+          <svg *ngIf="themeService.mode() === 'dark'" width="13" height="13" viewBox="0 0 24 24" fill="none" style="color: var(--text-secondary)">
+            <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <svg *ngIf="themeService.mode() === 'light'" width="13" height="13" viewBox="0 0 24 24" fill="none" style="color: var(--text-primary)">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+  
+    <!-- Hero -->
+    <main class="flex flex-1 items-center justify-center px-4 md:px-6 py-12 md:py-24">
+      <div class="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 items-stretch">
+  
+        <!-- Left -->
+        <div class="flex flex-col gap-6">
+          <div class="flex flex-col gap-3">
+            <h1 class="text-3xl md:text-5xl font-semibold tracking-tight leading-tight">
+              Ask anything.<br/>
+              <span style="color: var(--accent)">Get cited answers.</span>
+            </h1>
+            <p class="text-sm md:text-base leading-relaxed" style="color: var(--text-secondary);">
+              Upload any PDF and chat with it instantly. Every answer comes with exact page references so you can verify.
+            </p>
+          </div>
+  
+          <!-- Upload area -->
+          <div
+            (drop)="onDrop($event)"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave()"
+            class="flex flex-1 flex-col items-center justify-center gap-3 p-8 rounded-xl cursor-pointer transition-all w-full"
+            [style.background]="isDragging
+              ? 'rgba(255,255,255,0.08)'
+              : themeService.mode() === 'dark' ? 'rgba(255,255,255,0.03)' : '#f5f5f5'"
+            [style.border]="isDragging
+              ? '1px solid var(--accent)'
+              : themeService.mode() === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e5e5e5'"
+            style="backdrop-filter: blur(10px); min-height: 160px;"
+            (click)="fileInput.click()">
+  
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: rgba(255,255,255,0.06);">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color: var(--text-secondary)">
+                <path d="M9 12V4M5 7l4-4 4 4M3 14h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+  
+            <div class="text-center">
+              <p class="text-sm font-medium">Drop your PDF here</p>
+              <p class="text-xs mt-1" style="color: var(--text-muted);">or click to browse</p>
+            </div>
+  
+            <input
+              #fileInput
+              type="file"
+              accept=".pdf"
+              class="hidden"
+              (change)="onFileSelected($event)"/>
+
+              
+          </div>
+          <div class="mt-1">
+            <button
+  (click)="skipUpload()"
+  class="text-xs flex items-center gap-1 transition-all group w-fit mt-2"
+  style="color: var(--text-muted);">
+  <span class="group-hover:underline">start chatting without a document</span>
+  <span style="color: var(--accent);">→</span>
+</button>
+          </div>
+          <!-- Feature pills -->
+          <div class="flex items-center justify-between w-full pt-2"
+  style="border-top: 0.5px solid rgba(255,255,255,0.06);">
+  <div class="flex items-center gap-1.5 text-xs" style="color: var(--text-muted);">
+    <div class="w-1 h-1 rounded-full" style="background: var(--accent)"></div>
+    Cited answers
+  </div>
+  <div class="flex items-center gap-1.5 text-xs" style="color: var(--text-muted);">
+    <div class="w-1 h-1 rounded-full" style="background: var(--accent)"></div>
+    Streaming responses
+  </div>
+  <div class="flex items-center gap-1.5 text-xs" style="color: var(--text-muted);">
+    <div class="w-1 h-1 rounded-full" style="background: var(--accent)"></div>
+    Multiple PDFs
+  </div>
+</div>
+
+  
+          <div *ngIf="pdfService.isUploading()" class="flex items-center gap-2 text-sm" style="color: var(--text-secondary);">
+            <div class="w-4 h-4 rounded-full border-2 animate-spin" style="border-color: var(--accent); border-top-color: transparent;"></div>
+            Processing your PDF...
+          </div>
+  
+          <div *ngIf="pdfService.uploadError()" class="text-sm text-red-400">
+            {{ pdfService.uploadError() }}
+          </div>
+        </div>
+  
+        <!-- Right — Demo card — hidden on mobile -->
+        <div class="hidden md:flex flex-col gap-3 p-5 rounded-xl" [attr.style]="cardStyle">
+  
+          <div class="flex items-center gap-2 pb-3"
+            [style.border-bottom]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.06)' : '0.5px solid rgba(0,0,0,0.08)'">
+            <div class="w-4 h-4 rounded" style="background: var(--accent); opacity: 0.8;"></div>
+            <span class="text-xs font-medium" style="color: var(--text-secondary);">taxation.pdf</span>
+          </div>
+  
+          <div class="flex flex-col gap-3 flex-1 justify-center">
+  
+            <div class="self-end max-w-xs px-3 py-2 rounded-lg text-xs leading-relaxed"
+              [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'"
+              [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid rgba(0,0,0,0.08)'"
+              style="color: var(--accent);">
+              What are the GST tax slabs?
+            </div>
+  
+            <div class="flex flex-col gap-2">
+              <div class="max-w-xs px-3 py-2 rounded-lg text-xs leading-relaxed"
+                [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'"
+                [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.06)' : '0.5px solid rgba(0,0,0,0.06)'"
+                style="color: var(--text-primary);">
+                GST has five slabs — 0%, 5%, 12%, 18%, and 28%. Petroleum products are taxed separately by state governments.
+              </div>
+              <div class="flex gap-2">
+                <span class="px-2 py-1 rounded text-xs font-mono"
+                  [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'"
+                  [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid rgba(0,0,0,0.08)'"
+                  style="color: var(--accent);">Page 4</span>
+                <span class="px-2 py-1 rounded text-xs font-mono"
+                  [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'"
+                  [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid rgba(0,0,0,0.08)'"
+                  style="color: var(--accent);">Page 3</span>
+              </div>
+            </div>
+  
+            <div class="self-end max-w-xs px-3 py-2 rounded-lg text-xs leading-relaxed"
+              [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'"
+              [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid rgba(0,0,0,0.08)'"
+              style="color: var(--accent);">
+              Income tax due date?
+            </div>
+  
+            <div class="max-w-xs px-3 py-2 rounded-lg text-xs leading-relaxed"
+              [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'"
+              style="border: 0.5px solid var(--accent); color: var(--text-primary);">
+              Due on 31 July, 30 September, or 30 November...<span class="inline-block w-0.5 h-3 ml-0.5 animate-pulse align-middle" style="background: var(--accent);"></span>
+            </div>
+  
+          </div>
+        </div>
+      </div>
+    </main>
+  
+    <!-- Footer -->
+    <footer class="text-center py-4 text-xs font-mono"
+      style="color: var(--text-muted);"
+      [style.border-top]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.06)' : '0.5px solid rgba(0,0,0,0.08)'">
+      llama-3.3-70b · gemini-embedding-001
+    </footer>
+  
+  </div>

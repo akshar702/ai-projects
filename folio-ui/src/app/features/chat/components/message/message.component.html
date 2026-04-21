@@ -1,0 +1,31 @@
+<div class="flex flex-col gap-2" [class.items-end]="message.role === 'user'">
+
+    <span class="text-xs font-semibold uppercase tracking-wide px-1" style="color: var(--text-muted);">
+      {{ message.role === 'user' ? 'You' : 'Folio' }}
+    </span>
+
+    <div
+      class="max-w-xl px-4 py-3 rounded-xl text-sm leading-relaxed"
+      [style.background]="message.role === 'user' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'"
+      [style.border]="message.role === 'user' ? '0.5px solid rgba(255,255,255,0.1)' : '0.5px solid rgba(255,255,255,0.06)'"
+      [style.color]="message.role === 'user' ? 'var(--accent)' : 'var(--text-primary)'"
+      [style.border-bottom-right-radius]="message.role === 'user' ? '4px' : ''"
+      [style.border-bottom-left-radius]="message.role === 'assistant' ? '4px' : ''">
+      {{ message.content }}<span
+        *ngIf="message.isStreaming"
+        class="inline-block w-0.5 h-3 ml-0.5 animate-pulse align-middle rounded-sm"
+        style="background: var(--accent);">
+      </span>
+    </div>
+
+    <!-- Citations -->
+    <div *ngIf="message.sources?.length" class="flex gap-2 flex-wrap px-1">
+      <span
+        *ngFor="let source of message.sources"
+        class="px-2 py-1 rounded text-xs font-mono"
+        style="background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08); color: var(--accent);">
+        {{ source }}
+      </span>
+    </div>
+
+  </div>

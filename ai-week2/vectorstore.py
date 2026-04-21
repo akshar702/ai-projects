@@ -1,39 +1,37 @@
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-# ─────────────────────────────────────────
-# EMBEDDING MODEL
-# ─────────────────────────────────────────
 embedding_function = GoogleGenerativeAIEmbeddings(
     model="models/gemini-embedding-001",
     google_api_key=os.getenv("GEMINI_API_KEY")
 )
 
-# ─────────────────────────────────────────
-# LOAD + CHUNK
-# ─────────────────────────────────────────
-def load_and_chunk(pdf_path: str):
-    loader = PyPDFLoader(pdf_path)
+def load_pdf(path: str):
+    loader = PyPDFLoader(path)
     pages = loader.load()
-    
+    print(f"Loaded {len(pages)} pages")
+    return pages
+
+def chunk_documents(pages):
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
+        chunk_size=500,
+        chunk_overlap=100,
         length_function=len,
     )
     chunks = splitter.split_documents(pages)
     print(f"Total chunks: {len(chunks)}")
     return chunks
 
-# ─────────────────────────────────────────
-# STORE IN CHROMADB
-# ─────────────────────────────────────────
+def load_and_chunk(path: str):
+    pages = load_pdf(path)
+    return chunk_documents(pages)
+
 def store_in_chromadb(chunks, collection_name="documents"):
     vectorstore = Chroma.from_documents(
         documents=chunks,
@@ -44,26 +42,6 @@ def store_in_chromadb(chunks, collection_name="documents"):
     print(f"Stored {len(chunks)} chunks in ChromaDB ✅")
     return vectorstore
 
-# ─────────────────────────────────────────
-# SEARCH CHROMADB
-# ─────────────────────────────────────────
-def search(query: str, vectorstore, top_k=3):
-    results = vectorstore.similarity_search(query, k=top_k)
-    print(f"\nQuery: '{query}'")
-    print("=" * 50)
-    for i, doc in enumerate(results):
-        print(f"\nResult {i+1} — Page {doc.metadata.get('page', 0) + 1}:")
-        print(doc.page_content[:300])
-        print("-" * 30)
-    return results
-
-# ─────────────────────────────────────────
-# RUN
-# ─────────────────────────────────────────
 if __name__ == "__main__":
-    chunks = load_and_chunk("sample.pdf")
-    vectorstore = store_in_chromadb(chunks)
-    
-    # Test semantic search
-    search("what are the types of taxes in India?", vectorstore)
-    search("income tax rates", vectorstore)
+    pages = load_pdf("sample.pdf")
+    chunks = chunk_documents(pages)

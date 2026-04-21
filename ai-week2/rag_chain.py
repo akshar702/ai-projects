@@ -36,7 +36,8 @@ def get_pdf_hash(pdf_path: str) -> str:
 # ─────────────────────────────────────────
 def upload_pdf(pdf_path: str, force_reload=False) -> str:
     session_id = get_pdf_hash(pdf_path)  # hash = session_id
-    
+    print(f"Session ID: {session_id}")  # ← add this
+    print(f"PDF path: {pdf_path}")
     client = chromadb.PersistentClient(path="./chroma_db")
     
     if force_reload:
@@ -66,13 +67,13 @@ def upload_pdf(pdf_path: str, force_reload=False) -> str:
 # PROMPT TEMPLATE
 # ─────────────────────────────────────────
 prompt = ChatPromptTemplate.from_template("""
-You are a helpful assistant that answers questions based ONLY on the provided context.
+You are a helpful assistant that answers questions based on the provided context.
 
 Rules:
-- Answer only from the context below
-- Always mention which page you found the answer on
-- If answer is not in context, say "I couldn't find this in the document"
-- Be concise and clear
+- Primarily answer from the context below
+- Mention page numbers when you find relevant information
+- If the exact answer is not in context but related information exists, use that to give best possible answer
+- Only say "I couldn't find this" if context has absolutely nothing related
 
 Context:
 {context}
@@ -85,8 +86,8 @@ Answer:
 # ─────────────────────────────────────────
 # ASK — takes question + session_id
 # ─────────────────────────────────────────
-def ask(question: str, session_id: str, top_k: int = 5):
-    # Load correct collection using session_id
+def ask(question: str, session_id: str, top_k: int = 8):
+    print(f"Searching collection: {session_id}")
     vectorstore = Chroma(
         persist_directory="./chroma_db",
         embedding_function=embedding_function,
@@ -94,6 +95,11 @@ def ask(question: str, session_id: str, top_k: int = 5):
     )
     
     results = vectorstore.similarity_search(question, k=top_k)
+    print(f"Found {len(results)} results")
+    
+    # Add this:
+    for i, doc in enumerate(results):
+        print(f"Chunk {i+1}: {doc.page_content[:100]}")
     
     context = ""
     pages = []
@@ -102,11 +108,16 @@ def ask(question: str, session_id: str, top_k: int = 5):
         context += f"\n[Page {page}]\n{doc.page_content}\n"
         pages.append(f"Page {page}")
 
+    # Add this:
+    print(f"Context length: {len(context)}")
+    
     chain = prompt | llm
     response = chain.invoke({
         "context": context,
         "question": question
     })
+    
+    print(f"Answer: {response.content[:100]}")
     
     return {
         "answer": response.content,
