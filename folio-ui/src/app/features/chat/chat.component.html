@@ -92,44 +92,75 @@
         </div>
   
         <!-- Input area -->
-        <div class="shrink-0 px-4 md:px-8 py-4"
-          [style.border-top]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.06)' : '0.5px solid rgba(0,0,0,0.08)'">
-          <div class="max-w-3xl mx-auto">
-            <div class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
-              [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.04)' : '#f5f5f5'"
-              [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid #e5e5e5'">
-  
-              <input
-                #inputRef
-                type="text"
-                [(ngModel)]="question"
-                (keydown)="onKeydown($event)"
-                placeholder="Ask anything about your document..."
-                class="flex-1 bg-transparent outline-none text-sm"
-                style="color: var(--text-primary);"
-                [disabled]="chatService.isStreaming()"/>
-  
-              <button
-                (click)="sendMessage()"
-                [disabled]="!question.trim() || chatService.isStreaming()"
-                class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all"
-                [style.background]="question.trim() && !chatService.isStreaming() ? 'var(--accent)' : 'rgba(255,255,255,0.06)'"
-                [style.opacity]="!question.trim() || chatService.isStreaming() ? '0.5' : '1'">
-                <svg *ngIf="!chatService.isStreaming()" width="13" height="13" viewBox="0 0 13 13" fill="none">
-                  <path d="M2 11L11 6.5L2 2v3.5l6 1-6 1V11z" fill="white"/>
-                </svg>
-                <div *ngIf="chatService.isStreaming()"
-                  class="w-3 h-3 rounded-full border-2 animate-spin"
-                  style="border-color: var(--accent); border-top-color: transparent;">
-                </div>
-              </button>
-            </div>
-  
-            <p class="text-center text-xs mt-2 font-mono" style="color: var(--text-muted);">
-              llama-3.3-70b · gemini-embedding-001
-            </p>
-          </div>
-        </div>
+<div class="shrink-0 px-4 md:px-8 py-4"
+[style.border-top]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.06)' : '0.5px solid rgba(0,0,0,0.08)'">
+<div class="max-w-3xl mx-auto flex flex-col gap-2">
+
+  <!-- Mode toggle -->
+  <div class="flex items-center gap-2" *ngIf="pdfService.activeDocument()">
+    <button
+      (click)="chatMode = 'document'"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+      [style.background]="chatMode === 'document' ? 'var(--accent)' : 'rgba(255,255,255,0.04)'"
+      [style.color]="chatMode === 'document' ? 'white' : 'var(--text-muted)'"
+      [style.border]="chatMode === 'document' ? 'none' : '0.5px solid rgba(255,255,255,0.08)'">
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+        <path d="M3 1h5l2 2v8H3V1z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+      </svg>
+      Document
+    </button>
+    <button
+      (click)="chatMode = 'general'"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+      [style.background]="chatMode === 'general' ? 'var(--accent)' : 'rgba(255,255,255,0.04)'"
+      [style.color]="chatMode === 'general' ? 'white' : 'var(--text-muted)'"
+      [style.border]="chatMode === 'general' ? 'none' : '0.5px solid rgba(255,255,255,0.08)'">
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+        <path d="M2 4h8M2 8h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      General
+    </button>
+    <span class="text-xs" style="color: var(--text-muted);">
+      {{ chatMode === 'document' ? 'Asking about ' + pdfService.activeDocument()?.filename : 'General conversation' }}
+    </span>
+  </div>
+
+  <!-- Input row -->
+  <div class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all"
+    [style.background]="themeService.mode() === 'dark' ? 'rgba(255,255,255,0.04)' : '#f5f5f5'"
+    [style.border]="themeService.mode() === 'dark' ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid #e5e5e5'">
+
+    <input
+      #inputRef
+      type="text"
+      [(ngModel)]="question"
+      (keydown)="onKeydown($event)"
+      [placeholder]="chatMode === 'document' ? 'Ask anything about your document...' : 'Ask anything...'"
+      class="flex-1 bg-transparent outline-none text-sm"
+      style="color: var(--text-primary);"
+      [disabled]="chatService.isStreaming()"/>
+
+    <button
+      (click)="sendMessage()"
+      [disabled]="!question.trim() || chatService.isStreaming()"
+      class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all"
+      [style.background]="question.trim() && !chatService.isStreaming() ? 'var(--accent)' : 'rgba(255,255,255,0.06)'"
+      [style.opacity]="!question.trim() || chatService.isStreaming() ? '0.5' : '1'">
+      <svg *ngIf="!chatService.isStreaming()" width="13" height="13" viewBox="0 0 13 13" fill="none">
+        <path d="M2 11L11 6.5L2 2v3.5l6 1-6 1V11z" fill="white"/>
+      </svg>
+      <div *ngIf="chatService.isStreaming()"
+        class="w-3 h-3 rounded-full border-2 animate-spin"
+        style="border-color: var(--accent); border-top-color: transparent;">
+      </div>
+    </button>
+  </div>
+
+  <p class="text-center text-xs font-mono" style="color: var(--text-muted);">
+    llama-3.3-70b · gemini-embedding-001
+  </p>
+</div>
+</div>
   
       </div>
     </div>

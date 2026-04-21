@@ -1,54 +1,73 @@
 <aside class="flex flex-col h-full w-52 shrink-0"
-style="background: rgba(255,255,255,0.02); border-right: 0.5px solid rgba(255,255,255,0.06);">
+  style="background: rgba(255,255,255,0.02); border-right: 0.5px solid rgba(255,255,255,0.06);">
 
-<!-- Documents label -->
-<div class="px-4 pt-4 pb-2">
-  <span class="text-xs font-semibold uppercase tracking-widest" style="color: var(--text-muted);">
-    Documents
-  </span>
-</div>
+  <!-- Documents label -->
+  <div class="px-4 pt-4 pb-2">
+    <span class="text-xs font-semibold uppercase tracking-widest" style="color: var(--text-muted);">
+      Documents
+    </span>
+  </div>
 
-<!-- PDF list -->
-<div class="flex flex-col gap-1 px-2 flex-1 overflow-y-auto">
-  <button
+  <!-- PDF list -->
+  <div class="flex flex-col gap-1 px-2 flex-1 overflow-y-auto">
+    <button
     *ngFor="let doc of pdfService.documents()"
     (click)="selectDoc(doc)"
-    class="flex items-center gap-2 px-3 py-2 rounded-lg text-left w-full transition-all"
-    [style.background]="doc.isActive ? 'rgba(255,255,255,0.06)' : 'transparent'"
-    [style.border]="doc.isActive ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid transparent'">
-
+    class="group flex items-center gap-2 px-3 py-2 rounded-lg text-left w-full transition-all cursor-pointer"
+    [style.background]="pdfService.activeDocument()?.id === doc.id ? 'rgba(255,255,255,0.06)' : 'transparent'"
+    [style.border]="pdfService.activeDocument()?.id === doc.id ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid transparent'">
+  
     <div class="w-6 h-6 rounded flex items-center justify-center shrink-0"
-      [style.background]="doc.isActive ? 'rgba(var(--accent-rgb), 0.15)' : 'rgba(255,255,255,0.04)'">
+      [style.background]="pdfService.activeDocument()?.id === doc.id ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)'">
       <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
         <path d="M3 1h5l2 2v8H3V1z"
-          [attr.stroke]="doc.isActive ? 'var(--accent)' : '#555'"
+          [attr.stroke]="pdfService.activeDocument()?.id === doc.id ? 'var(--accent)' : '#555'"
           stroke-width="1" stroke-linejoin="round"/>
       </svg>
     </div>
-
+  
     <div class="flex-1 min-w-0">
       <p class="text-xs truncate"
-        [style.color]="doc.isActive ? 'var(--text-primary)' : 'var(--text-secondary)'"
-        [style.font-weight]="doc.isActive ? '500' : '400'">
+        [style.color]="pdfService.activeDocument()?.id === doc.id ? 'var(--text-primary)' : 'var(--text-secondary)'"
+        [style.font-weight]="pdfService.activeDocument()?.id === doc.id ? '500' : '400'">
         {{ doc.filename }}
       </p>
     </div>
-
-    <div *ngIf="doc.isActive" class="w-1 h-1 rounded-full shrink-0" style="background: var(--accent)"></div>
+  
+    <!-- Delete button — shows on hover -->
+    <button
+      (click)="removeDoc($event, doc)"
+      class="opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 flex items-center justify-center rounded shrink-0 hover:bg-white/10"
+      style="color: var(--text-muted);">
+      <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+        <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  
   </button>
-</div>
+  </div>
 
-<!-- New document button -->
-<div class="p-3 mt-auto" style="border-top: 0.5px solid rgba(255,255,255,0.06);">
-  <button
-    (click)="goToLanding()"
-    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg transition-all"
-    style="background: rgba(255,255,255,0.03); border: 0.5px solid rgba(255,255,255,0.06);">
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span class="text-xs" style="color: var(--text-muted);">New document</span>
-  </button>
-</div>
+  <!-- New document button -->
+  <div class="p-3 mt-auto" style="border-top: 0.5px solid rgba(255,255,255,0.06);">
+
+    <!-- Hidden file input -->
+    <input
+  #sidebarFileInput
+  type="file"
+  accept=".pdf"
+  multiple
+  class="hidden"
+  (change)="onFileSelected($event)"/>
+
+    <button
+      (click)="sidebarFileInput.click()"
+      class="flex items-center gap-2 w-full px-3 py-2 rounded-lg transition-all"
+      style="background: rgba(255,255,255,0.03); border: 0.5px solid rgba(255,255,255,0.06);">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <span class="text-xs" style="color: var(--text-muted);">New document</span>
+    </button>
+  </div>
 
 </aside>

@@ -83,12 +83,14 @@ class="flex items-center gap-2 cursor-pointer"
               <p class="text-xs mt-1" style="color: var(--text-muted);">or click to browse</p>
             </div>
   
-            <input
-              #fileInput
-              type="file"
-              accept=".pdf"
-              class="hidden"
-              (change)="onFileSelected($event)"/>
+            <!-- In landing.component.html -->
+<input
+#fileInput
+type="file"
+accept=".pdf"
+multiple
+class="hidden"
+(change)="onFileSelected($event)"/>
 
               
           </div>

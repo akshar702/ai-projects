@@ -18,8 +18,19 @@ export class PdfService {
   constructor(private http: HttpClient) {}
 
   uploadPdf(file: File): Observable<PdfDocument> {
+    // Check if already uploaded
+    const exists = this.documents().find(d => d.filename === file.name)
+    if (exists) {
+      this.setActiveDocument(exists)
+      // Return existing doc as observable
+      return new Observable(observer => {
+        observer.next(exists)
+        observer.complete()
+      })
+    }
+  
     this.isUploading.set(true)
-    this.uploadError.set(null)  // ← clear previous error
+    this.uploadError.set(null)
   
     const formData = new FormData()
     formData.append('file', file)
@@ -46,14 +57,23 @@ export class PdfService {
         this.uploadError.set('Failed to upload PDF. Please try again.')
         return throwError(() => err)
       }),
-      finalize(() => this.isUploading.set(false))  // ← always runs
+      finalize(() => this.isUploading.set(false))
     )
   }
-
   setActiveDocument(doc: PdfDocument) {
     this.documents.update(docs =>
       docs.map(d => ({ ...d, isActive: d.id === doc.id }))
     )
     this.activeDocument.set({ ...doc, isActive: true })
+  }
+
+  removeDocument(id: string) {
+    const remaining = this.documents().filter(d => d.id !== id)
+    this.documents.set(remaining)
+  
+    // If removed doc was active — set first remaining as active or null
+    if (this.activeDocument()?.id === id) {
+      this.activeDocument.set(remaining[0] ?? null)
+    }
   }
 }

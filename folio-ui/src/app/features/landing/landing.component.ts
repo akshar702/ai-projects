@@ -45,17 +45,20 @@ export class LandingComponent {
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement
-    if (input.files?.[0]) {
-      this.uploadFile(input.files[0])
+    if (input.files?.length) {
+      Array.from(input.files).forEach(file => this.uploadFile(file))
     }
+    input.value = ''
   }
-
+  
   onDrop(event: DragEvent) {
     event.preventDefault()
     this.isDragging = false
-    const file = event.dataTransfer?.files[0]
-    if (file && file.type === 'application/pdf') {
-      this.uploadFile(file)
+    const files = event.dataTransfer?.files
+    if (files?.length) {
+      Array.from(files)
+        .filter(f => f.type === 'application/pdf')
+        .forEach(file => this.uploadFile(file))
     }
   }
 
@@ -69,12 +72,20 @@ export class LandingComponent {
   }
 
   uploadFile(file: File) {
-    this.pdfService.uploadError.set(null)  // ← clear old error
+    this.pdfService.uploadError.set(null)
+  
+    const exists = this.pdfService.documents().find(d => d.filename === file.name)
+    if (exists) {
+      this.toastService.show(`${file.name} is already in your documents`, 'info')
+      this.router.navigate(['/chat'])
+      return
+    }
+  
     this.pdfService.uploadPdf(file).subscribe({
-      next: () => {
-        console.log('sdfasd');
-        this.toastService.show('Document uploaded successfully')
-        this.router.navigate(['/chat'])},
+      next: (doc) => {
+        this.toastService.show(`${doc.filename} uploaded successfully`)
+        this.router.navigate(['/chat'])
+      },
       error: (err) => {
         this.toastService.show('Failed to upload PDF. Please try again.', 'error')
         console.error(err)

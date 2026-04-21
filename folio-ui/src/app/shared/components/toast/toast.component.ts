@@ -16,14 +16,17 @@ import { ToastService } from '../../../core/services/toast.service'
 
         <!-- Icon -->
         <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-          [style.background]="toast.type === 'success' ? 'var(--accent)' : '#e11d48'">
-          <svg *ngIf="toast.type === 'success'" width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M2 5l2.5 2.5L8 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <svg *ngIf="toast.type === 'error'" width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M3 3l4 4M7 3l-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-        </div>
+  [style.background]="toast.type === 'success' ? 'var(--accent)' : toast.type === 'error' ? '#e11d48' : '#0e7490'">
+  <svg *ngIf="toast.type === 'success'" width="10" height="10" viewBox="0 0 10 10" fill="none">
+    <path d="M2 5l2.5 2.5L8 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <svg *ngIf="toast.type === 'error'" width="10" height="10" viewBox="0 0 10 10" fill="none">
+    <path d="M3 3l4 4M7 3l-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+  <svg *ngIf="toast.type === 'info'" width="10" height="10" viewBox="0 0 10 10" fill="none">
+    <path d="M5 4v4M5 3v0.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>
+</div>
 
         <span>{{ toast.message }}</span>
 

@@ -20,6 +20,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   @ViewChild('inputRef') inputRef!: ElementRef
 
   question = ''
+  chatMode: 'document' | 'general' = 'document'
 
   constructor(
     public chatService: ChatService,
@@ -41,11 +42,17 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {}
 
+  toggleChatMode() {
+    this.chatMode = this.chatMode === 'document' ? 'general' : 'document'
+  }
+  
   sendMessage() {
     if (!this.question.trim() || this.chatService.isStreaming()) return
   
-    // sessionId can be null — general chat
-    const sessionId = this.pdfService.activeDocument()?.id ?? null
+    // Use session only in document mode AND if document exists
+    const sessionId = this.chatMode === 'document' && this.pdfService.activeDocument()
+      ? this.pdfService.activeDocument()!.id
+      : null
   
     const q = this.question
     this.question = ''
