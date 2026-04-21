@@ -3,8 +3,7 @@ import { HttpClient } from '@angular/common/http'
 import { Observable, throwError } from 'rxjs'
 import { map, catchError, finalize } from 'rxjs/operators'
 import { PdfDocument } from '../models/pdf.model'
-import { environment } from '../../../environments/environment.development'
-
+import { environment } from '../../../environments/environment'
 @Injectable({ providedIn: 'root' })
 export class PdfService {
   private apiUrl = environment.apiUrl

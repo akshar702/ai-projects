@@ -1,7 +1,6 @@
 import { Injectable, signal } from '@angular/core'
 import { Message } from '../models/message.model'
-import { environment } from '../../../environments/environment.development'
-
+import { environment } from '../../../environments/environment'
 @Injectable({ providedIn: 'root' })
 export class ChatService {
 
