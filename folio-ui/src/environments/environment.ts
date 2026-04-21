@@ -1,4 +1,4 @@
 export const environment = {
     production: true,
-    apiUrl: 'https://folio-ui-e72b08.netlify.app'
+    apiUrl: 'https://folio-api-f2gp.onrender.com'
   }
