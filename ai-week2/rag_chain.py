@@ -77,32 +77,9 @@ def upload_pdf(pdf_path: str, force_reload=False) -> str:
     return session_id  # return to caller
 
 # ─────────────────────────────────────────
-# PROMPT TEMPLATE
-# ─────────────────────────────────────────
-prompt = ChatPromptTemplate.from_template("""
-You are a helpful assistant called Folio. You help users understand their documents.
-
-Context from the document:
-{context}
-
-Rules:
-- If the question is a greeting or general conversation, respond naturally and friendly
-- If the question is about the document, answer from the context and mention page numbers
-- If the answer is not in the context, say so honestly but stay helpful
-- Primarily answer from the context below
-- Mention page numbers when you find relevant information
-- If the exact answer is not in context but related information exists, use that to give best possible answer
-- Only say "I couldn't find this" if context has absolutely nothing related
-
-Question: {question}
-
-Answer:
-""")
-
-# ─────────────────────────────────────────
 # ASK — takes question + session_id
 # ─────────────────────────────────────────
-def ask(question: str, session_id: str, top_k: int = 8):
+def ask(question: str, session_id: str, history: list = [], top_k: int = 8):
     vectorstore = Chroma(
         persist_directory="./chroma_db",
         embedding_function=embedding_function,
@@ -118,22 +95,35 @@ def ask(question: str, session_id: str, top_k: int = 8):
         context += f"\n[Page {page}]\n{doc.page_content}\n"
         pages.append(f"Page {page}")
 
-    chain = prompt | llm
-    response = chain.invoke({
-        "context": context,
-        "question": question
-    })
+    # Build message history for LLM
+    chat_history = []
+    for msg in history[-6:]:  # last 6 messages = 3 turns
+        role = "human" if msg['role'] == 'user' else "assistant"
+        chat_history.append((role, msg['content']))
+
+    # Dynamic prompt with history
+    messages = [
+        ("system", """You are Folio, a helpful assistant for understanding documents.
+
+Rules:
+- Answer from the document context when question is about the document
+- Mention page numbers when relevant  
+- Use conversation history to answer follow up questions
+- If greeting or general chat, respond naturally and friendly
+- Only say you couldn't find something if context has nothing related
+"""),
+        *chat_history,
+        ("human", f"""Context from document:
+{context}
+
+Question: {question}""")
+    ]
+
+    prompt_with_history = ChatPromptTemplate.from_messages(messages)
+    chain = prompt_with_history | llm
+    response = chain.invoke({})
 
     answer = response.content
-
-    # Only return sources if answer actually uses document context
-    # Check if answer contains document-specific content
-    is_document_answer = any(
-        keyword in answer.lower() 
-        for keyword in ['page', 'document', 'context', 'according', 'mentioned', 'states', 'provides']
-    )
-
-    relevant_sources = list(set(pages)) if is_document_answer else []
     relevant_sources = [] if is_conversational(question) else list(set(pages))
 
     return {

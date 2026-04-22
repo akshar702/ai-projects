@@ -24,13 +24,18 @@ app.add_middleware(
 # ─────────────────────────────────────────
 # MODELS
 # ─────────────────────────────────────────
-class AskRequest(BaseModel):
-    question: str
-    session_id: str
-
 class Message(BaseModel):
     role: str
     content: str
+
+class HistoryMessage(BaseModel):
+    role: str
+    content: str
+
+class AskRequest(BaseModel):
+    question: str
+    session_id: str
+    history: list[HistoryMessage] = []
 
 class ChatHistoryRequest(BaseModel):
     messages: List[Message]
@@ -69,14 +74,16 @@ async def ask_question(request: AskRequest):
 @app.post("/ask/stream")
 async def ask_stream(request: AskRequest):
     def generate():
-        result = ask(request.question, request.session_id)
+        result = ask(
+            request.question, 
+            request.session_id,
+            history=[{"role": m.role, "content": m.content} for m in request.history]
+        )
         answer = result["answer"]
         sources = result["sources"]
 
-        # Stream word by word instead of char by char
         words = answer.split(' ')
         for i, word in enumerate(words):
-            # Add space back except for last word
             token = word + (' ' if i < len(words) - 1 else '')
             yield f"data: {token}\n\n"
 

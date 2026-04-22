@@ -7,11 +7,12 @@ import { PdfService } from '../../core/services/pdf.service'
 import { ThemeService, AccentTheme } from '../../core/services/theme.service'
 import { SidebarComponent } from '../sidebar/sidebar.component'
 import { MessageComponent } from './components/message/message.component'
+import { HeaderComponent } from '../../shared/components/header/header.component'
 
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, SidebarComponent, MessageComponent],
+  imports: [CommonModule, FormsModule, SidebarComponent, MessageComponent, HeaderComponent],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
 })
@@ -32,9 +33,20 @@ export class ChatComponent implements OnInit, OnDestroy {
     effect(() => {
       const msgs = this.chatService.messages()
       if (msgs.length) {
-        setTimeout(() => this.scrollToBottom(), 50)
+        setTimeout(() => this.scrollToBottom(), 100)
       }
     })
+  
+    // Refocus input when streaming stops
+    effect(() => {
+      const streaming = this.chatService.isStreaming()
+      if (!streaming) {
+        setTimeout(() => {
+          this.inputRef?.nativeElement?.focus()
+        }, 50)
+      }
+    })
+    
   }
 
   ngOnInit() {
@@ -49,7 +61,6 @@ export class ChatComponent implements OnInit, OnDestroy {
   sendMessage() {
     if (!this.question.trim() || this.chatService.isStreaming()) return
   
-    // Use session only in document mode AND if document exists
     const sessionId = this.chatMode === 'document' && this.pdfService.activeDocument()
       ? this.pdfService.activeDocument()!.id
       : null
@@ -57,6 +68,11 @@ export class ChatComponent implements OnInit, OnDestroy {
     const q = this.question
     this.question = ''
     this.chatService.ask(q, sessionId)
+  
+    // Refocus input after sending
+    setTimeout(() => {
+      this.inputRef?.nativeElement?.focus()
+    }, 0)
   }
 
   onKeydown(event: KeyboardEvent) {
@@ -68,30 +84,6 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   scrollToBottom() {
     this.messagesEnd?.nativeElement?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  get headerBorderStyle() {
-    return this.themeService.mode() === 'dark'
-      ? 'border-bottom: 0.5px solid rgba(255,255,255,0.1);'
-      : 'border-bottom: 0.5px solid rgba(0,0,0,0.1);'
-  }
-
-  setAccent(theme: AccentTheme) {
-    this.themeService.setAccent(theme)
-  }
-
-  toggleMode() {
-    const current = this.themeService.mode()
-    this.themeService.setMode(current === 'dark' ? 'light' : 'dark')
-  }
-
-  themes: AccentTheme[] = ['amber', 'teal', 'purple', 'rose']
-
-  themeColors: Record<AccentTheme, string> = {
-    amber: '#d97706',
-    teal: '#0e7490',
-    purple: '#7c3aed',
-    rose: '#e11d48'
   }
   
 }

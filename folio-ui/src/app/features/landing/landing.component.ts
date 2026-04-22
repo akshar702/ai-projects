@@ -4,25 +4,17 @@ import { ThemeService, AccentTheme } from '../../core/services/theme.service'
 import { PdfService } from '../../core/services/pdf.service'
 import { CommonModule } from '@angular/common'
 import { ToastService } from '../../core/services/toast.service'
+import { HeaderComponent } from '../../shared/components/header/header.component'
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, HeaderComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
 export class LandingComponent {
   isDragging = false
-
-  themes: AccentTheme[] = ['amber', 'teal', 'purple', 'rose']
-
-  themeColors: Record<AccentTheme, string> = {
-    amber: '#d97706',
-    teal: '#0e7490',
-    purple: '#7c3aed',
-    rose: '#e11d48'
-  }
 
   constructor(
     public themeService: ThemeService,
@@ -35,12 +27,6 @@ export class LandingComponent {
     return this.themeService.mode() === 'dark'
       ? 'background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 0.5px solid rgba(255,255,255,0.08);'
       : 'background: #f5f5f5; border: 0.5px solid #e5e5e5;'
-  }
-
-  get headerBorderStyle() {
-    return this.themeService.mode() === 'dark'
-      ? 'border-bottom: 0.5px solid rgba(255,255,255,0.1);'
-      : 'border-bottom: 0.5px solid rgba(0,0,0,0.1);'
   }
 
   onFileSelected(event: Event) {
@@ -91,15 +77,6 @@ export class LandingComponent {
         console.error(err)
       }
     })
-  }
-
-  setAccent(theme: AccentTheme) {
-    this.themeService.setAccent(theme)
-  }
-
-  toggleMode() {
-    const current = this.themeService.mode()
-    this.themeService.setMode(current === 'dark' ? 'light' : 'dark')
   }
 
   skipUpload() {

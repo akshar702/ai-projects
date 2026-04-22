@@ -45,9 +45,23 @@ export class ChatService {
         ? `${this.apiUrl}/ask/stream`
         : `${this.apiUrl}/chat/stream`
   
-      const body = sessionId
-        ? { question, session_id: sessionId }
-        : { messages: [{ role: 'user', content: question }], temperature: 0.7 }
+        const body = sessionId
+        ? { 
+            question, 
+            session_id: sessionId,
+            history: this.messages()
+              .slice(0, -2)  // exclude current user + empty assistant messages
+              .map(m => ({ role: m.role, content: m.content }))
+          }
+        : { 
+            messages: [
+              ...this.messages()
+                .slice(0, -2)
+                .map(m => ({ role: m.role, content: m.content })),
+              { role: 'user', content: question }
+            ], 
+            temperature: 0.7 
+          }
   
       const response = await fetch(url, {
         method: 'POST',
