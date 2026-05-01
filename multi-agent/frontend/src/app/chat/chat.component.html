@@ -1,0 +1,114 @@
+<section class="h-full flex flex-col">
+  <!-- Project path bar -->
+  <div class="px-6 py-3 border-b border-ink-700 bg-ink-800/50">
+    <label class="flex items-center gap-3 text-sm">
+      <span class="text-slate-400 shrink-0">Project path</span>
+      <input
+        type="text"
+        [ngModel]="projectPath()"
+        (ngModelChange)="projectPath.set($event)"
+        placeholder="/Users/you/Desktop/your-angular-app  (defaults to backend's PROJECT_PATH)"
+        class="flex-1 bg-ink-700 border border-ink-600 rounded-md px-3 py-1.5 text-sm placeholder:text-slate-500 focus:outline-none focus:border-accent-400"
+      />
+    </label>
+  </div>
+
+  <!-- Messages -->
+  <div class="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+    <div class="max-w-3xl mx-auto flex flex-col gap-5">
+      @if (messages().length === 0) {
+        <div class="text-center text-slate-500 mt-20">
+          <p class="text-lg font-medium text-slate-300 mb-2">
+            Ask Folio about your Angular project.
+          </p>
+          <p class="text-sm">
+            Try: "What components live in src/app?" or "Find me a tutorial on
+            Angular Signals."
+          </p>
+        </div>
+      }
+
+      @for (m of messages(); track trackById($index, m)) {
+        <div
+          class="flex"
+          [class.justify-end]="m.role === 'user'"
+          [class.justify-start]="m.role === 'assistant'"
+        >
+          <div
+            class="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+            [class.bg-accent-500]="m.role === 'user'"
+            [class.text-white]="m.role === 'user'"
+            [class.rounded-br-md]="m.role === 'user'"
+            [class.bg-ink-700]="m.role === 'assistant'"
+            [class.text-slate-100]="m.role === 'assistant'"
+            [class.rounded-bl-md]="m.role === 'assistant'"
+            [class.border]="m.role === 'assistant' && m.error"
+            [class.border-red-500]="m.error"
+          >
+            @if (m.role === 'assistant' && m.agent) {
+              <span
+                class="inline-block text-[10px] uppercase tracking-wide px-1.5 py-0.5 mr-2 rounded bg-ink-900/60 text-accent-400 font-semibold"
+              >
+                {{ agentLabel(m.agent) }}
+              </span>
+            }
+            @if (m.text) {
+              <span>{{ m.text }}</span>
+            }
+            @if (m.pending && !m.text) {
+              <span class="inline-flex gap-1 items-center">
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.15s]"></span>
+                <span class="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.3s]"></span>
+              </span>
+            }
+            @if (m.pending && m.text) {
+              <span class="inline-block w-2 h-4 align-middle ml-0.5 bg-accent-400 animate-pulse"></span>
+            }
+          </div>
+        </div>
+      }
+
+      <div #scrollEnd></div>
+    </div>
+  </div>
+
+  <!-- Composer -->
+  <form
+    (submit)="$event.preventDefault(); send()"
+    class="border-t border-ink-700 bg-ink-800/60 px-6 py-4"
+  >
+    <div class="max-w-3xl mx-auto flex items-end gap-3">
+      <textarea
+        #input
+        rows="1"
+        [ngModel]="draft()"
+        (ngModelChange)="draft.set($event)"
+        name="draft"
+        placeholder="Ask Folio… (Enter to send, Shift+Enter for newline)"
+        class="flex-1 resize-none bg-ink-700 border border-ink-600 rounded-xl px-4 py-3 text-sm placeholder:text-slate-500 focus:outline-none focus:border-accent-400 max-h-40"
+      ></textarea>
+      @if (isStreaming()) {
+        <button
+          type="button"
+          (click)="cancel()"
+          class="shrink-0 px-4 py-3 rounded-xl bg-ink-600 hover:bg-ink-500 text-sm font-medium text-slate-200 transition"
+        >
+          Stop
+        </button>
+      } @else {
+        <button
+          type="submit"
+          [disabled]="!canSend()"
+          class="shrink-0 px-4 py-3 rounded-xl bg-accent-500 hover:bg-accent-400 disabled:bg-ink-600 disabled:text-slate-500 text-sm font-semibold text-white transition"
+        >
+          Send
+        </button>
+      }
+    </div>
+    <p class="max-w-3xl mx-auto mt-2 text-[11px] text-slate-500">
+      Folio routes to a codebase agent (MCP filesystem) or a search agent
+      (Tavily) depending on your question.
+    </p>
+  </form>
+</section>

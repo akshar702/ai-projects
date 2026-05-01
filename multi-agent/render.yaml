@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: folio-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: PROJECT_PATH
+        # Inside the container the Angular project must be mounted or
+        # bundled into the image; set this to the absolute path used at
+        # runtime.
+        value: /app/project
+      - key: CORS_ORIGINS
+        sync: false

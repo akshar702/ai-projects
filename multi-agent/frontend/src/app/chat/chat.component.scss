@@ -1,0 +1,12 @@
+// Chat-specific styles. Most styling is Tailwind utility classes in the
+// template; this file holds anything that doesn't fit cleanly there.
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+textarea {
+  // Allow the textarea to grow with content up to max-h-40 (Tailwind).
+  field-sizing: content;
+}
