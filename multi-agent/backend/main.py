@@ -77,7 +77,8 @@ async def lifespan(app: FastAPI):  # noqa: D401 — FastAPI hook
             "PROJECT_PATH env var is required (absolute path to the "
             "Angular project Folio should reason about)."
         )
-
+    import pathlib
+    pathlib.Path(_project_path).mkdir(parents=True, exist_ok=True)
     await init_mcp_client(_project_path)
     _orchestrator = build_orchestrator(_project_path)
     logger.info("Folio ready — project_path=%s", _project_path)
