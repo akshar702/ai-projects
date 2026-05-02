@@ -46,11 +46,13 @@ import { playerSlideUp } from '../../animations/route.animations';
             </div>
           </div>
 
-          <!-- Iframe (hidden — audio only) -->
+          <!-- Iframe (FIX 5: width/height 0 keeps it in DOM so YouTube audio plays) -->
           <iframe
             [src]="safeUrl()"
             allow="autoplay; encrypted-media"
-            style="display: none"
+            width="0"
+            height="0"
+            style="position:absolute; opacity:0; pointer-events:none;"
             title="Folio Music Player">
           </iframe>
 

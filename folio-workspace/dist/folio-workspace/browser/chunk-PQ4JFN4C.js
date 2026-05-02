@@ -1,0 +1,1 @@
+import{ec as t,fc as e}from"./chunk-SF6SGDO3.js";var s=t("[Nav] Set Active Section",e()),r=t("[Sidebar] Toggle"),i=t("[Settings] Update",e()),n=t("[Settings] Load From Storage"),c=t("[Settings] Loaded",e()),p=t("[Music] Set Current",e()),S=t("[Music] Stop");export{s as a,r as b,i as c,n as d,c as e,p as f,S as g};

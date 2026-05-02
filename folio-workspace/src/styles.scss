@@ -27,6 +27,11 @@
   padding: 0;
 }
 
+/* router-outlet renders as an empty DOM element — ensure it never blocks clicks */
+router-outlet {
+  display: none !important;
+}
+
 html, body {
   height: 100%;
   overflow: hidden;
@@ -45,6 +50,7 @@ html, body {
 }
 
 .gradient-mesh-bg {
+  pointer-events: none;
   position: fixed;
   inset: 0;
   background: linear-gradient(

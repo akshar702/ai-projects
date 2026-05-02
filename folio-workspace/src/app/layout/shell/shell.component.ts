@@ -16,14 +16,20 @@ import { selectCurrentMusic } from '../../core/store/app.selectors';
   imports: [CommonModule, RouterOutlet, SidebarComponent, MusicPlayerComponent],
   animations: [routeAnimations, contentLoadAnim],
   styles: [`
-    :host { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+    :host {
+      display: flex;
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+    }
     .route-container {
       position: relative;
       flex: 1;
       overflow: hidden;
     }
-    /* The component injected by router-outlet needs to fill its container */
-    .route-container > * {
+    /* Exclude router-outlet element itself — it must NOT get position:absolute
+       or it becomes a full-screen transparent click-blocker overlay */
+    .route-container > *:not(router-outlet) {
       position: absolute;
       inset: 0;
       overflow-y: auto;
@@ -36,7 +42,6 @@ import { selectCurrentMusic } from '../../core/store/app.selectors';
           class="flex-1 flex flex-col overflow-hidden"
           [style.padding-bottom]="music().playing ? '68px' : '0'">
 
-      <!-- Animation wrapper: state drives cross-fade, child fills full height -->
       <div class="route-container flex-1"
            [@routeAnimation]="getAnimState(outlet)">
         <router-outlet #outlet="outlet"></router-outlet>

@@ -12,7 +12,7 @@ import { loadSettings } from './core/store/app.actions';
   imports: [ShellComponent],
   template: `
     <!-- Animated gradient mesh background -->
-    <div class="gradient-mesh-bg" aria-hidden="true"></div>
+    <div class="gradient-mesh-bg" aria-hidden="true" style="pointer-events: none;"></div>
 
     <!-- App shell (sidebar + main content) -->
     <app-shell></app-shell>
@@ -23,6 +23,8 @@ import { loadSettings } from './core/store/app.actions';
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      position: relative;
+      z-index: 1;
     }
   `],
 })

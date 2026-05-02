@@ -238,7 +238,7 @@ export class CodeIntelComponent implements OnInit {
       this.messages.update((m) => [...m, agentMsg]);
 
       this.streamSub = this.agentSvc
-        .streamChat(msg, this.sessionId())
+        .streamChat(msg, this.sessionId(), !!this.uploadedFile())
         .subscribe({
           next: (token: StreamToken) => {
             this.messages.update((msgs) =>

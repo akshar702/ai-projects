@@ -8,6 +8,11 @@ export const setActiveSection = createAction(
 
 export const toggleSidebar = createAction('[Sidebar] Toggle');
 
+export const setSidebarCollapsed = createAction(
+  '[Sidebar] Set Collapsed',
+  props<{ collapsed: boolean }>()
+);
+
 export const updateSettings = createAction(
   '[Settings] Update',
   props<{ settings: AppSettings }>()

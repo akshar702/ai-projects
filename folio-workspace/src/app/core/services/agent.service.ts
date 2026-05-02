@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { selectP1Url, selectP2Url } from '../store/app.selectors';
+import { environment } from '../../../environments/environment';
 
 export interface StreamToken {
   token: string;
@@ -20,37 +21,59 @@ export interface MusicResult {
 @Injectable({ providedIn: 'root' })
 export class AgentService {
   private store = inject(Store);
-
-  private p1Url = '';
-  private p2Url = '';
+  private p1Url = environment.p1BackendUrl;
+  private p2Url = environment.p2BackendUrl;
 
   constructor() {
-    this.store.select(selectP1Url).subscribe((url) => (this.p1Url = url));
-    this.store.select(selectP2Url).subscribe((url) => (this.p2Url = url));
+    // FIX 4: environment URL is fallback; NgRx store (user settings) takes priority
+    this.store.select(selectP1Url).subscribe((url) => {
+      this.p1Url = url || environment.p1BackendUrl;
+    });
+    this.store.select(selectP2Url).subscribe((url) => {
+      this.p2Url = url || environment.p2BackendUrl;
+    });
   }
 
-  /** Stream chat response from P1 RAG backend (SSE via fetch + ReadableStream) */
-  streamChat(message: string, sessionId: string): Observable<StreamToken> {
+  /**
+   * FIX 2 — P1 RAG backend streaming
+   * - hasFile=true  → POST /ask/stream  (PDF/doc session)
+   * - hasFile=false → POST /chat/stream (general chat)
+   *
+   * P1 SSE format (plain text, NOT JSON):
+   *   data: token_text\n\n
+   *   data: [SOURCES]["url1","url2"]\n\n
+   *   data: [DONE]\n\n
+   */
+  streamChat(
+    message: string,
+    sessionId: string,
+    hasFile = false
+  ): Observable<StreamToken> {
     return new Observable((observer) => {
       const controller = new AbortController();
 
       (async () => {
         try {
-          const res = await fetch(`${this.p1Url}/chat`, {
+          const endpoint = hasFile ? '/ask/stream' : '/chat/stream';
+          const body = hasFile
+            ? JSON.stringify({ question: message, session_id: sessionId, history: [] })
+            : JSON.stringify({ messages: [{ role: 'user', content: message }], temperature: 0.7 });
+
+          const res = await fetch(`${this.p1Url}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-            body: JSON.stringify({ message, session_id: sessionId }),
+            body,
             signal: controller.signal,
           });
 
           if (!res.ok || !res.body) {
-            observer.error(new Error(`P1 backend error: ${res.status}`));
+            observer.error(new Error(`P1 error: ${res.status} ${res.statusText}`));
             return;
           }
 
-          const reader = res.body.getReader();
+          const reader  = res.body.getReader();
           const decoder = new TextDecoder();
-          let buffer = '';
+          let buffer    = '';
 
           while (true) {
             const { done, value } = await reader.read();
@@ -61,27 +84,30 @@ export class AgentService {
             buffer = lines.pop() ?? '';
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const raw = line.slice(6).trim();
-                if (raw === '[DONE]') {
-                  observer.next({ token: '', done: true });
-                  observer.complete();
-                  return;
-                }
-                try {
-                  const parsed = JSON.parse(raw);
-                  observer.next({
-                    token: parsed.token ?? parsed.text ?? raw,
-                    done: parsed.done ?? false,
-                    sources: parsed.sources,
-                  });
-                } catch {
-                  // Plain text token
-                  observer.next({ token: raw, done: false });
-                }
+              if (!line.startsWith('data: ')) continue;
+              const raw = line.slice(6).trim();
+
+              if (raw === '[DONE]') {
+                observer.next({ token: '', done: true });
+                observer.complete();
+                return;
               }
+
+              if (raw.startsWith('[SOURCES]')) {
+                try {
+                  const sources: string[] = JSON.parse(raw.slice(9));
+                  observer.next({ token: '', done: false, sources });
+                } catch {
+                  // ignore malformed sources
+                }
+                continue;
+              }
+
+              // Plain text token
+              observer.next({ token: raw, done: false });
             }
           }
+
           observer.next({ token: '', done: true });
           observer.complete();
         } catch (err: any) {
@@ -93,7 +119,11 @@ export class AgentService {
     });
   }
 
-  /** Stream research response from P2 agentic backend (SSE via fetch + ReadableStream) */
+  /**
+   * FIX 3 — P2 agentic research backend
+   * SSE format: data: {"token":"...","done":false,"agent":"codebase_agent"}\n\n
+   * Strip "_agent" suffix from agent field before emitting.
+   */
   streamResearch(query: string, projectPath: string): Observable<StreamToken> {
     return new Observable((observer) => {
       const controller = new AbortController();
@@ -108,13 +138,13 @@ export class AgentService {
           });
 
           if (!res.ok || !res.body) {
-            observer.error(new Error(`P2 backend error: ${res.status}`));
+            observer.error(new Error(`P2 error: ${res.status} ${res.statusText}`));
             return;
           }
 
-          const reader = res.body.getReader();
+          const reader  = res.body.getReader();
           const decoder = new TextDecoder();
-          let buffer = '';
+          let buffer    = '';
 
           while (true) {
             const { done, value } = await reader.read();
@@ -125,31 +155,36 @@ export class AgentService {
             buffer = lines.pop() ?? '';
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const raw = line.slice(6).trim();
-                if (raw === '[DONE]') {
-                  observer.next({ token: '', done: true });
-                  observer.complete();
-                  return;
-                }
-                try {
-                  const parsed = JSON.parse(raw);
-                  observer.next({
-                    token: parsed.token ?? '',
-                    agent: parsed.agent,
-                    done: parsed.done ?? false,
-                    sources: parsed.sources,
-                  });
-                  if (parsed.done) {
-                    observer.complete();
-                    return;
-                  }
-                } catch {
-                  observer.next({ token: raw, done: false });
-                }
+              if (!line.startsWith('data: ')) continue;
+              const raw = line.slice(6).trim();
+
+              if (raw === '[DONE]') {
+                observer.next({ token: '', done: true });
+                observer.complete();
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(raw);
+                // FIX 3: strip "_agent" suffix (backend sends "codebase_agent" / "search_agent")
+                const agent = parsed.agent
+                  ? (parsed.agent.replace('_agent', '') as 'codebase' | 'search')
+                  : undefined;
+
+                observer.next({
+                  token:   parsed.token  ?? '',
+                  agent,
+                  done:    parsed.done   ?? false,
+                  sources: parsed.sources,
+                });
+
+                if (parsed.done) { observer.complete(); return; }
+              } catch {
+                observer.next({ token: raw, done: false });
               }
             }
           }
+
           observer.next({ token: '', done: true });
           observer.complete();
         } catch (err: any) {
@@ -178,16 +213,12 @@ export class AgentService {
             signal: controller.signal,
           });
 
-          if (!res.ok) {
-            observer.error(new Error(`Search failed: ${res.status}`));
-            return;
-          }
+          if (!res.ok) { observer.error(new Error(`Search failed: ${res.status}`)); return; }
 
-          // Collect full streamed response
-          const reader = res.body!.getReader();
+          const reader  = res.body!.getReader();
           const decoder = new TextDecoder();
-          let fullText = '';
-          let buffer = '';
+          let fullText  = '';
+          let buffer    = '';
 
           while (true) {
             const { done, value } = await reader.read();
@@ -198,29 +229,24 @@ export class AgentService {
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 const raw = line.slice(6).trim();
-                try {
-                  const p = JSON.parse(raw);
-                  if (p.token) fullText += p.token;
-                } catch {
-                  fullText += raw;
-                }
+                try   { const p = JSON.parse(raw); if (p.token) fullText += p.token; }
+                catch { fullText += raw; }
               }
             }
           }
 
-          // Extract YouTube URLs from response text
           const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
           const results: MusicResult[] = [];
           let match: RegExpExecArray | null;
           let i = 0;
 
           while ((match = ytRegex.exec(fullText)) !== null) {
-            const videoId = match[1];
+            const vid = match[1];
             results.push({
-              title: `Search Result ${++i}`,
-              url: `https://www.youtube.com/watch?v=${videoId}`,
-              embedUrl: `https://www.youtube.com/embed/${videoId}`,
-              mood: 'Custom',
+              title:    `Search Result ${++i}`,
+              url:      `https://www.youtube.com/watch?v=${vid}`,
+              embedUrl: `https://www.youtube.com/embed/${vid}`,
+              mood:     'Custom',
             });
           }
 

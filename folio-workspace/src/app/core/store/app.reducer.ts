@@ -3,6 +3,7 @@ import { initialState } from './app.state';
 import {
   setActiveSection,
   toggleSidebar,
+  setSidebarCollapsed,
   updateSettings,
   settingsLoaded,
   setCurrentMusic,
@@ -20,6 +21,11 @@ export const appReducer = createReducer(
   on(toggleSidebar, (state) => ({
     ...state,
     sidebarCollapsed: !state.sidebarCollapsed,
+  })),
+
+  on(setSidebarCollapsed, (state, { collapsed }) => ({
+    ...state,
+    sidebarCollapsed: collapsed,
   })),
 
   on(updateSettings, (state, { settings }) => ({
