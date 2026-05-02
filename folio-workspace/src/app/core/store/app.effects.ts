@@ -7,13 +7,14 @@ import {
   updateSettings,
 } from './app.actions';
 import { AppSettings } from './app.state';
+import { environment } from '../../../environments/environment';
 
-const STORAGE_KEY = 'folio_settings';
+const STORAGE_KEY = 'folio_settings_v2'; // bumped to clear stale localhost URLs
 
 const DEFAULT_SETTINGS: AppSettings = {
-  p1BackendUrl: 'http://localhost:8000',
-  p2BackendUrl: 'http://localhost:8001',
-  projectPath: '/Users/username/my-angular-project',
+  p1BackendUrl: environment.p1BackendUrl,
+  p2BackendUrl: environment.p2BackendUrl,
+  projectPath: '',
 };
 
 @Injectable()

@@ -1,12 +1,14 @@
 import {
-  Component, ChangeDetectionStrategy, inject, signal, OnInit
+  Component, ChangeDetectionStrategy, inject, signal, OnInit, OnDestroy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
+import { Subscription } from 'rxjs';
 import { updateSettings } from '../../core/store/app.actions';
 import { selectSettings } from '../../core/store/app.selectors';
 import { AppSettings } from '../../core/store/app.state';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-settings',
@@ -42,7 +44,7 @@ import { AppSettings } from '../../core/store/app.state';
               </label>
               <input
                 [(ngModel)]="form.p1BackendUrl"
-                placeholder="http://localhost:8000"
+                [placeholder]="defaultP1"
                 class="folio-input">
               <p class="text-xs mt-1" style="color: var(--text-dim)">
                 FastAPI server running the RAG document Q&A service
@@ -55,7 +57,7 @@ import { AppSettings } from '../../core/store/app.state';
               </label>
               <input
                 [(ngModel)]="form.p2BackendUrl"
-                placeholder="http://localhost:8001"
+                [placeholder]="defaultP2"
                 class="folio-input">
               <p class="text-xs mt-1" style="color: var(--text-dim)">
                 FastAPI server running the Agentic Research Assistant
@@ -78,7 +80,7 @@ import { AppSettings } from '../../core/store/app.state';
             </label>
             <input
               [(ngModel)]="form.projectPath"
-              placeholder="/Users/username/my-angular-project"
+              placeholder="/path/to/your/angular-project"
               class="folio-input">
             <p class="text-xs mt-1" style="color: var(--text-dim)">
               Used by the codebase agent in Research mode
@@ -120,7 +122,8 @@ import { AppSettings } from '../../core/store/app.state';
             <div class="flex justify-between"><span>Version</span><span style="color: var(--text-primary)">1.0.0</span></div>
             <div class="flex justify-between"><span>Angular</span><span style="color: var(--text-primary)">17+</span></div>
             <div class="flex justify-between"><span>NgRx</span><span style="color: var(--text-primary)">17.2</span></div>
-            <div class="flex justify-between"><span>Project</span><span style="color: var(--primary-light)">AI Engineering Roadmap — Week 4</span></div>
+            <div class="flex justify-between"><span>P1 default</span><span style="color: var(--primary-light)">{{ defaultP1 }}</span></div>
+            <div class="flex justify-between"><span>P2 default</span><span style="color: var(--accent-light)">{{ defaultP2 }}</span></div>
           </div>
         </div>
 
@@ -132,6 +135,12 @@ import { AppSettings } from '../../core/store/app.state';
               <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
             </svg>
             Save Settings
+          </button>
+
+          <button (click)="resetToDefaults()"
+                  class="text-xs px-4 py-2 rounded-lg transition-all"
+                  style="background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer">
+            Reset to Defaults
           </button>
 
           <div *ngIf="saved()" class="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
@@ -147,25 +156,46 @@ import { AppSettings } from '../../core/store/app.state';
     </div>
   `,
 })
-export class SettingsComponent implements OnInit {
+export class SettingsComponent implements OnInit, OnDestroy {
   private store = inject(Store);
+  private sub?: Subscription;
+
+  // Placeholders and defaults come from the environment (swapped at build time)
+  readonly defaultP1 = environment.p1BackendUrl;
+  readonly defaultP2 = environment.p2BackendUrl;
 
   form: AppSettings = {
-    p1BackendUrl: 'http://localhost:8000',
-    p2BackendUrl: 'http://localhost:8001',
-    projectPath: '/Users/username/my-angular-project',
+    p1BackendUrl: environment.p1BackendUrl,
+    p2BackendUrl: environment.p2BackendUrl,
+    projectPath: '',
   };
 
   saved = signal(false);
   private savedTimeout?: ReturnType<typeof setTimeout>;
 
   ngOnInit(): void {
-    this.store.select(selectSettings).subscribe((s) => {
+    this.sub = this.store.select(selectSettings).subscribe((s) => {
       this.form = { ...s };
     });
   }
 
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
+  }
+
   save(): void {
+    this.store.dispatch(updateSettings({ settings: { ...this.form } }));
+    this.saved.set(true);
+    clearTimeout(this.savedTimeout);
+    this.savedTimeout = setTimeout(() => this.saved.set(false), 3000);
+  }
+
+  resetToDefaults(): void {
+    this.form = {
+      p1BackendUrl: environment.p1BackendUrl,
+      p2BackendUrl: environment.p2BackendUrl,
+      projectPath: '',
+    };
     this.store.dispatch(updateSettings({ settings: { ...this.form } }));
     this.saved.set(true);
     clearTimeout(this.savedTimeout);

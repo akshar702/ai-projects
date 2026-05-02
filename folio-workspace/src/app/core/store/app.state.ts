@@ -26,13 +26,15 @@ export interface AppState {
   currentMusic: CurrentMusic;
 }
 
+import { environment } from '../../../environments/environment';
+
 export const initialState: AppState = {
   activeSection: 'code-intel',
   sidebarCollapsed: false,
   settings: {
-    p1BackendUrl: 'http://localhost:8000',
-    p2BackendUrl: 'http://localhost:8001',
-    projectPath: '/Users/username/my-angular-project',
+    p1BackendUrl: environment.p1BackendUrl,
+    p2BackendUrl: environment.p2BackendUrl,
+    projectPath: '',
   },
   currentMusic: {
     playing: false,
