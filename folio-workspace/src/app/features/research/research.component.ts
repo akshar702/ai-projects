@@ -33,7 +33,6 @@ import { Subscription } from 'rxjs';
         </div>
 
         <div class="flex items-center gap-2">
-          <!-- Agent legend -->
           <span class="badge badge-codebase text-xs">codebase</span>
           <span class="badge badge-search text-xs">search</span>
 
@@ -47,6 +46,7 @@ import { Subscription } from 'rxjs';
       </div>
 
       <!-- Project path config -->
+      <!-- projectPath still uses ngModel — config field, not chat input, no INP impact -->
       <div class="px-6 py-3 border-b flex items-center gap-3 flex-shrink-0"
            style="border-color: var(--border); background: var(--bg-surface)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -64,7 +64,7 @@ import { Subscription } from 'rxjs';
       <div class="flex-1 overflow-y-auto px-6 py-4" #messagesContainer>
 
         <!-- Empty state -->
-        <div *ngIf="messages().length === 0" class="flex flex-col items-center justify-center h-full gap-4 py-12">
+        <div *ngIf="messages().length === 0 && !streamingId()" class="flex flex-col items-center justify-center h-full gap-4 py-12">
           <div class="text-4xl">🔍</div>
           <h2 class="text-lg font-semibold">Research Assistant</h2>
           <p class="text-sm text-center max-w-xs" style="color: var(--text-muted)">
@@ -80,9 +80,16 @@ import { Subscription } from 'rxjs';
           </div>
         </div>
 
+        <!-- Committed messages — array only updated when message is complete -->
         <app-message-bubble
           *ngFor="let msg of messages(); trackBy: trackById"
           [message]="msg">
+        </app-message-bubble>
+
+        <!-- Streaming message — isolated signal, no array map per token -->
+        <app-message-bubble
+          *ngIf="streamingId()"
+          [message]="streamingMessage()">
         </app-message-bubble>
 
         <!-- Thinking -->
@@ -107,7 +114,7 @@ import { Subscription } from 'rxjs';
       <div class="px-6 py-4 flex-shrink-0 border-t" style="border-color: var(--border); background: var(--bg-surface)">
         <div class="flex gap-3 items-end">
           <textarea
-            [(ngModel)]="inputText"
+            #inputRef
             (keydown.enter)="onEnter($event)"
             placeholder="Ask a research question… (⏎ to send)"
             rows="2"
@@ -118,7 +125,7 @@ import { Subscription } from 'rxjs';
 
           <button
             (click)="sendQuery()"
-            [disabled]="!inputText.trim() || isThinking()"
+            [disabled]="isThinking()"
             class="folio-btn-primary flex-shrink-0 flex items-center gap-2"
             style="height: 52px; padding: 0 20px">
             <svg *ngIf="!isThinking()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -138,11 +145,29 @@ export class ResearchComponent implements OnInit {
   private agentSvc = inject(AgentService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('inputRef') inputRef!: ElementRef<HTMLTextAreaElement>;
 
+  // Committed messages — only updated once per message (when streaming completes)
   messages = signal<ChatMessage[]>([]);
-  inputText = '';
-  isThinking = signal(false);
+
+  // Isolated streaming signals — only these update per token
+  streamingId = signal<string>('');
+  streamingContent = signal<string>('');
+  streamingSources = signal<any>(null);
   currentAgent = signal<'codebase' | 'search' | ''>('');
+
+  // Derived message object for the streaming bubble
+  streamingMessage = (): ChatMessage => ({
+    id: this.streamingId(),
+    role: 'agent',
+    agent: this.currentAgent() || undefined,
+    content: this.streamingContent(),
+    streaming: true,
+    sources: this.streamingSources(),
+    timestamp: new Date(),
+  });
+
+  isThinking = signal(false);
   projectPath = '/Users/username/my-angular-project';
 
   private streamSub?: Subscription;
@@ -155,8 +180,10 @@ export class ResearchComponent implements OnInit {
   ];
 
   private readonly scrollEffect = effect(() => {
-    const msgs = this.messages();
-    if (msgs.length > 0) setTimeout(() => this.scrollToBottom(), 50);
+    // Track both signals so scroll triggers on new messages AND streaming tokens
+    this.messages();
+    this.streamingContent();
+    setTimeout(() => this.scrollToBottom(), 50);
   });
 
   ngOnInit(): void {
@@ -168,72 +195,106 @@ export class ResearchComponent implements OnInit {
     this.streamSub?.unsubscribe();
     this.isThinking.set(false);
     this.currentAgent.set('');
+    this.streamingId.set('');
+    this.streamingContent.set('');
+    this.streamingSources.set(null);
   }
 
   onEnter(event: Event): void {
-    if (!(event as KeyboardEvent).shiftKey) { event.preventDefault(); this.sendQuery(); }
+    if (!(event as KeyboardEvent).shiftKey) {
+      event.preventDefault();
+      this.sendQuery();
+    }
   }
 
   sendQuery(text?: string): void {
-    const q = (text ?? this.inputText).trim();
-    if (!q || this.isThinking()) return;
-    if (!text) this.inputText = '';
+    const msg = text ?? this.inputRef?.nativeElement?.value?.trim();
+    if (!msg || this.isThinking()) return;
+
+    if (!text && this.inputRef?.nativeElement) {
+      this.inputRef.nativeElement.value = '';
+    }
 
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(), role: 'user', content: q, timestamp: new Date(),
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: msg,
+      timestamp: new Date(),
     };
+
     this.messages.update((m) => [...m, userMsg]);
     this.isThinking.set(true);
     this.currentAgent.set('');
 
-    const agentMsg: ChatMessage = {
-      id: crypto.randomUUID(), role: 'agent', content: '',
-      streaming: true, timestamp: new Date(),
-    };
+    const agentMsgId = crypto.randomUUID();
+    const agentMsgTimestamp = new Date();
 
     setTimeout(() => {
       this.isThinking.set(false);
-      this.messages.update((m) => [...m, agentMsg]);
+
+      // Initialize streaming signals
+      this.streamingId.set(agentMsgId);
+      this.streamingContent.set('');
+      this.streamingSources.set(null);
 
       this.streamSub = this.agentSvc
-        .streamResearch(q, this.projectPath)
+        .streamResearch(msg, this.projectPath)
         .subscribe({
           next: (token: StreamToken) => {
+            // Only small signals updated per token — no array map
             if (token.agent) {
               this.currentAgent.set(token.agent);
             }
-            this.messages.update((msgs) =>
-              msgs.map((m) =>
-                m.id === agentMsg.id
-                  ? {
-                      ...m,
-                      content: m.content + token.token,
-                      agent: (token.agent as any) ?? m.agent,
-                      streaming: !token.done,
-                      sources: token.sources ?? m.sources,
-                    }
-                  : m
-              )
-            );
+            this.streamingContent.update(c => c + token.token);
+            if (token.sources) {
+              this.streamingSources.set(token.sources);
+            }
+
+            if (token.done) {
+              this.commitStreamingMessage(agentMsgId, agentMsgTimestamp);
+            }
           },
           error: (err: Error) => {
-            this.messages.update((msgs) =>
-              msgs.map((m) =>
-                m.id === agentMsg.id
-                  ? { ...m, content: `⚠️ Error: ${err.message}`, streaming: false }
-                  : m
-              )
-            );
+            const errorMsg: ChatMessage = {
+              id: agentMsgId,
+              role: 'agent',
+              content: `⚠️ Error: ${err.message}`,
+              streaming: false,
+              timestamp: agentMsgTimestamp,
+            };
+            this.messages.update(msgs => [...msgs, errorMsg]);
+            this.clearStreamingState();
             this.isThinking.set(false);
           },
           complete: () => {
-            this.messages.update((msgs) =>
-              msgs.map((m) => (m.id === agentMsg.id ? { ...m, streaming: false } : m))
-            );
-            this.currentAgent.set('');
+            // Safety net — if done flag never arrived
+            if (this.streamingId()) {
+              this.commitStreamingMessage(agentMsgId, agentMsgTimestamp);
+            }
           },
         });
     }, 600);
+  }
+
+  private commitStreamingMessage(id: string, timestamp: Date): void {
+    const completedMsg: ChatMessage = {
+      id,
+      role: 'agent',
+      agent: this.currentAgent() || undefined,
+      content: this.streamingContent(),
+      streaming: false,
+      sources: this.streamingSources(),
+      timestamp,
+    };
+    this.messages.update(msgs => [...msgs, completedMsg]);
+    this.clearStreamingState();
+  }
+
+  private clearStreamingState(): void {
+    this.streamingId.set('');
+    this.streamingContent.set('');
+    this.streamingSources.set(null);
+    this.currentAgent.set('');
   }
 
   trackById(_: number, msg: ChatMessage): string { return msg.id; }

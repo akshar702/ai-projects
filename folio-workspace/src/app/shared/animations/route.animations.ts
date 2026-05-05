@@ -56,17 +56,25 @@ export const agentMessageAnim = trigger('agentMessage', [
   ]),
 ]);
 
+/**
+ * LCP FIX — was 400ms with translateX(-24px).
+ * Reduced to 250ms and removed translate to unblock first paint sooner.
+ */
 export const shellLoadAnim = trigger('shellLoad', [
   transition(':enter', [
-    style({ opacity: 0, transform: 'translateX(-24px)' }),
-    animate('400ms ease-out', style({ opacity: 1, transform: 'translateX(0)' })),
+    style({ opacity: 0 }),
+    animate('250ms ease-out', style({ opacity: 1 })),
   ]),
 ]);
 
+/**
+ * LCP FIX — was '400ms 200ms ease-out'.
+ * Removed 200ms delay — content should paint immediately after shell.
+ */
 export const contentLoadAnim = trigger('contentLoad', [
   transition(':enter', [
     style({ opacity: 0 }),
-    animate('400ms 200ms ease-out', style({ opacity: 1 })),
+    animate('300ms ease-out', style({ opacity: 1 })),
   ]),
 ]);
 
@@ -77,12 +85,18 @@ export const logoAnim = trigger('logoAnim', [
   ]),
 ]);
 
+/**
+ * LCP FIX — stagger reduced from 50ms to 20ms.
+ * Focus Music is the 3rd nav item. At 50ms stagger it painted at ~350ms.
+ * At 20ms stagger it paints at ~240ms — well within LCP budget.
+ * Animation duration also reduced from 250ms to 200ms.
+ */
 export const navItemsAnim = trigger('navItems', [
   transition(':enter', [
     query('.nav-item', [
-      style({ opacity: 0, transform: 'translateX(-16px)' }),
-      stagger(50, [
-        animate('250ms ease-out', style({ opacity: 1, transform: 'translateX(0)' })),
+      style({ opacity: 0, transform: 'translateX(-12px)' }),
+      stagger(20, [
+        animate('200ms ease-out', style({ opacity: 1, transform: 'translateX(0)' })),
       ]),
     ], { optional: true }),
   ]),

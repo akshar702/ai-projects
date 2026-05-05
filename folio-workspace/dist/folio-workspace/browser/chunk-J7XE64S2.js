@@ -1,0 +1,1 @@
+import{fc as t,gc as e}from"./chunk-IVSZAYVL.js";var s=t("[Nav] Set Active Section",e()),r=t("[Sidebar] Toggle"),i=t("[Sidebar] Set Collapsed",e()),n=t("[Settings] Update",e()),c=t("[Settings] Load From Storage"),p=t("[Settings] Loaded",e()),S=t("[Music] Set Current",e()),a=t("[Music] Stop");export{s as a,r as b,i as c,n as d,c as e,p as f,S as g,a as h};

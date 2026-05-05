@@ -1,9 +1,8 @@
 import {
   Component, ChangeDetectionStrategy, inject, signal,
-  computed, OnInit
+  computed, OnInit, ViewChild, ElementRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { MusicService } from '../../core/services/music.service';
 import { AgentService, MusicResult } from '../../core/services/agent.service';
@@ -16,7 +15,8 @@ import { musicCardFlip, thinkingAnim } from '../../shared/animations/route.anima
   selector: 'app-focus-music',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  // FormsModule removed — no ngModel used anymore
+  imports: [CommonModule],
   animations: [musicCardFlip, thinkingAnim],
   template: `
     <div class="flex flex-col h-full overflow-y-auto px-6 py-6" style="color: var(--text-primary)">
@@ -74,14 +74,18 @@ import { musicCardFlip, thinkingAnim } from '../../shared/animations/route.anima
       <div class="mb-6">
         <h2 class="text-sm font-semibold mb-3" style="color: var(--text-muted)">🔎 Search for more music</h2>
         <div class="flex gap-3">
+          <!--
+            Uncontrolled input — no [(ngModel)].
+            Eliminates per-keypress change detection on this component.
+          -->
           <input
-            [(ngModel)]="searchQuery"
+            #searchRef
             (keydown.enter)="searchMusic()"
             placeholder="Search focus music… (uses AI research agent)"
             class="folio-input flex-1">
 
           <button (click)="searchMusic()"
-                  [disabled]="!searchQuery.trim() || isSearching()"
+                  [disabled]="isSearching()"
                   class="folio-btn-primary flex-shrink-0 flex items-center gap-2">
             <div *ngIf="isSearching()" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             <svg *ngIf="!isSearching()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -131,9 +135,10 @@ export class FocusMusicComponent implements OnInit {
   private musicSvc = inject(MusicService);
   private agentSvc = inject(AgentService);
 
+  @ViewChild('searchRef') searchRef!: ElementRef<HTMLInputElement>;
+
   playlists = signal(this.musicSvc.getDefaultPlaylists());
   activeMood = signal<string>('All');
-  searchQuery = '';
   searchResults = signal<MusicResult[]>([]);
   isSearching = signal(false);
   activeSearchId = signal<number | null>(null);
@@ -178,11 +183,13 @@ export class FocusMusicComponent implements OnInit {
   }
 
   searchMusic(): void {
-    if (!this.searchQuery.trim() || this.isSearching()) return;
+    const query = this.searchRef?.nativeElement?.value?.trim();
+    if (!query || this.isSearching()) return;
+
     this.isSearching.set(true);
     this.searchResults.set([]);
 
-    this.agentSvc.searchMusic(this.searchQuery).subscribe({
+    this.agentSvc.searchMusic(query).subscribe({
       next: (results) => {
         this.searchResults.set(results);
         this.isSearching.set(false);
